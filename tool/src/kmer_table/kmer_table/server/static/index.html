@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>K-mer table web interface</title>
+        <script src="/js/vue.js"></script>
+        <script src="/js/axios.min.js"></script>
+        <script src="/js/main.js"></script>
+    </head>
+    <body>
+        <h3>K-mer table web form</h3>
+        <div id="app">
+            <form name="main_form" action="/lookup" method="GET" target="_blank">
+                
+                <div>
+                    <strong>1. Select table</strong>
+                    <br/>
+                    {{ table_info.tables_dir_path }} ..
+                    <br/>
+                    <span v-for="(table, index) in table_info.table_list">
+                        <input type="radio" name="table_path" :id="table" :value="table" :checked="index==0">
+                        <label :for=table>{{ table_relative_path(table) }}</label>
+                        <br/>
+                    </span>
+                    
+                </div>
+                <div>
+                    <strong>2. Enter k-mer sequence</strong>
+                    <br/>
+                    <input name="kmer" placeholder="ATGC..."/>
+                    <br>
+                </div>
+
+                <strong>3. Run with options</strong>
+                <div style="display:flex">
+                    <div style="margin: 5px; padding: 5px; padding-right: 10px; border-right: 2px solid;">
+                        Get k-mer coordinates in table. <small>(csv format)</small>
+                        <br/>
+                        Filter sequence id:
+                        <input type='text' name=seqid>
+                        <br>
+                        <small>wild card: *</small>
+                        <br>
+                        <button type="button" onClick="run_pickup()">Run</button>
+                    </div>
+                    <div style="margin: 5px; padding: 5px;">
+                        Get k-mer coordinates for each feature<small>(gff format)</small>
+                        <br>
+                        Select GFF file 
+                        <br/>
+                        {{ gff_info.gff_dir_path }} ..
+                        <br/>
+                        <span v-for="(gff, index) in gff_info.gff_list">
+                            <input type="radio" name="gff_path" :id="gff" :value="gff" :checked="index==0">
+                            <label :for=gff>{{ gff_relative_path(gff) }}</label>
+                            <br/>
+                        </span>
+                        Filter feature type: 
+                        <select name="feature_type">
+                            <option value="">--</option>
+                            <option value="gene">gene</option>
+                            <option value="mRNA">mRNA</option>
+                            <option value="exon">exon</option>
+                            <option value="CDS">CDS</option>
+                        </select>
+                        <br>
+                        <button type="button" onClick="run_lookup()">Run</button>
+                    </div>
+                </div>
+                
+            </form>
+            <form name="pickup_form" action="/pickup" method="GET" target="_blank">
+                <input type="hidden" name="table_path">
+                <input type="hidden" name="kmer">
+                <input type="hidden" name="seqid">
+            </form>
+            <form name="lookup_form" action="/lookup" method="GET" target="_blank">
+                <input type="hidden" name="table_path">
+                <input type="hidden" name="kmer">
+                <input type="hidden" name="gff_path">
+                <input type="hidden" name="feature_type">
+            </form>
+        </div>
+    </body>
+</html>
