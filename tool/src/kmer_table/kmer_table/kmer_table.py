@@ -94,12 +94,15 @@ def create_kmer_list(kmer_size):
 
 def scan_kmer_coord(sequence, kmer_size):
     sequence = sequence.translate(sequence.maketrans('atgcnuU', 'ATGCNTT'))
-    kmer_coord_list = {kmer: array.array('I', []) for kmer in create_kmer_list(kmer_size)}
+    kmer_coord_list = {}
     for i in range(len(sequence)-kmer_size+1):
         kmer = sequence[i:i+kmer_size]
         if 'N' in kmer:
             continue
-        kmer_coord_list[kmer].append(i+1)   # 1-based coord 
+        if kmer in kmer_coord_list:
+            kmer_coord_list[kmer].append(i+1)   # 1-based coord
+        else:
+            kmer_coord_list[kmer] = array.array('I', [i+1])   # 1-based coord
     return kmer_coord_list
 
 
@@ -163,10 +166,17 @@ def generate_kmer_coord_table_by_sequence(fasta_file, kmer_size, out_dir, format
             executer.map(write_kmer_table_by_sequence, out_dir_list, seqid_list, kmer_list, coord_list_list, format_list)
 
 
-def write_kmer_table(table_dir_path, kmer, seqs_coord_list, format):
+def write_kmer_table(table_dir_path, kmer, seqs_coord_list, seqid_list, format):
     if not format:
         format = 'csv'
     if format == 'pkl':
+        tmp_seqs_coord_list = {}
+        for seqid in seqid_list:
+            if seqid in seqs_coord_list:
+                tmp_seqs_coord_list[seqid] = seqs_coord_list[seqid]
+            else:
+                tmp_seqs_coord_list[seqid] = array.array('I', [])
+        seqs_coord_list = tmp_seqs_coord_list
         if not os.path.isfile(f"{table_dir_path}/{kmer}.pkl.gz"):
             with gzip.open(f"{table_dir_path}/{kmer}.pkl.gz", mode='wb') as f:
                 pickle.dump({}, f)
@@ -177,9 +187,12 @@ def write_kmer_table(table_dir_path, kmer, seqs_coord_list, format):
             pickle.dump(new_seqs_coord_list, f)
     elif format == 'csv':
         with gzip.open(f"{table_dir_path}/{kmer}.csv.gz", mode='at') as f:
-            for seqid, coord in seqs_coord_list.items():
-                coord_list_str = ','.join([str(c) for c in coord])
-                f.write(f'{seqid},{coord_list_str}\n')
+            for seqid in seqid_list:
+                if seqid in seqs_coord_list:
+                    coord_list_str = ','.join([str(c) for c in seqs_coord_list[seqid]])
+                    f.write(f'{seqid},{coord_list_str}\n')
+                else:
+                    f.write(f'{seqid},\n')
 
 
 def generate_kmer_coord_table(fasta_file, kmer_size, out_dir, format):
@@ -187,21 +200,29 @@ def generate_kmer_coord_table(fasta_file, kmer_size, out_dir, format):
         os.makedirs(out_dir)
     kmer_list = create_kmer_list(kmer_size)
     sequence_table = read_fasta(fasta_file)
-    all_kmer_list = {v: {k: None for k in sequence_table.keys()} for v in kmer_list}
-    
-    sequence_list = sequence_table.values()
-    kmer_size_list = [kmer_size for i in range(len(sequence_list))]
-    with concurrent.futures.ProcessPoolExecutor() as executer:
-        kmer_coord_list_by_sequence = executer.map(scan_kmer_coord, sequence_list, kmer_size_list)
+    all_kmer_list = {v: {} for v in kmer_list}
 
-    for kmer_coord_list, seqid in zip(kmer_coord_list_by_sequence, sequence_table.keys()):
-        for kmer, coord in kmer_coord_list.items():
-            all_kmer_list[kmer][seqid] = coord
+    if len(sequence_table.keys()) > 10000:
+        for seqid, sequence in sequence_table.items():
+            kmer_coord_list = scan_kmer_coord(sequence, kmer_size)
+            for kmer, coord in kmer_coord_list.items():
+                all_kmer_list[kmer][seqid] = coord
+    else:
+        sequence_list = sequence_table.values()
+        kmer_size_list = [kmer_size for i in range(len(sequence_list))]
+        with concurrent.futures.ProcessPoolExecutor() as executer:
+            kmer_coord_list_by_sequence = executer.map(scan_kmer_coord, sequence_list, kmer_size_list)
+
+        for kmer_coord_list, seqid in zip(kmer_coord_list_by_sequence, sequence_table.keys()):
+            for kmer, coord in kmer_coord_list.items():
+                all_kmer_list[kmer][seqid] = coord
     
     out_dir_list = [out_dir for i in range(len(kmer_list))]
     format_list = [format for i in range(len(kmer_list))]
+    seqid_list = [seqid for seqid in sequence_table.keys()]
+    seqid_list_list = [seqid_list for i in range(len(kmer_list))]
     with concurrent.futures.ProcessPoolExecutor() as executer:
-        executer.map(write_kmer_table, out_dir_list, kmer_list, list(all_kmer_list.values()),format_list)
+        executer.map(write_kmer_table, out_dir_list, kmer_list, all_kmer_list.values(), seqid_list_list, format_list)
 
 
 def get_kmer_coord_list(source_coord_list, start, end, kmer_size):
@@ -382,6 +403,8 @@ def get_gff_path_list(root_path):
 
 
 def output_kmer_coord_in_table(table_dir_path, target_kmer, seqid_keyword="*"):
+    if 'N' in target_kmer:
+        return output_kmer_coord_in_table_with_gap(table_dir_path, target_kmer, seqid_keyword)
     if __name__ == "__main__":
         signal(SIGPIPE, SIG_DFL) # Supress broken pipe error
     target_kmer_coord_table = read_kmer_table(table_dir_path, target_kmer)
@@ -393,6 +416,31 @@ def output_kmer_coord_in_table(table_dir_path, target_kmer, seqid_keyword="*"):
     p = re.compile(seqid_keyword_re_str)
     picked_kmer_coord_table = {}
     for seqid, coord_list in target_kmer_coord_table.items():
+        if len(coord_list) > 0 and p.match(seqid):
+            picked_kmer_coord_table[seqid] = coord_list
+            if __name__ == "__main__":
+                print(seqid, ','.join(map(str,coord_list)), sep=',')
+    return picked_kmer_coord_table
+
+
+def output_kmer_coord_in_table_with_gap(table_dir_path, target_kmer, seqid_keyword="*"):
+    if __name__ == "__main__":
+        signal(SIGPIPE, SIG_DFL) # Supress broken pipe error
+    
+    target_kmer_list = create_kmer_combination_with_gap(target_kmer)
+    target_kmer_coord_table_list = [read_kmer_table(table_dir_path, tmp_kmer) for tmp_kmer in target_kmer_list]
+    escape_table = {'\\':'\\\\', '.':'\\.', '*':'.*', '+':'\\+', '?':'\\?', '{':'\\{', '}':'\\}', '(':'\\(', ')':'\\)', '[':'\\[', ']':'\\]', '^':'\\^', '$':'\\$', '|':'\\|'}
+    seqid_keyword_re_str = seqid_keyword
+    for befor, after in escape_table.items():
+        seqid_keyword_re_str = seqid_keyword_re_str.replace(befor, after)
+    seqid_keyword_re_str = '^' + seqid_keyword_re_str + '$'
+    p = re.compile(seqid_keyword_re_str)
+    picked_kmer_coord_table = {}
+    for seqid in target_kmer_coord_table_list[0].keys():
+        coord_list = array.array('I')
+        for target_kmer_coord_table in target_kmer_coord_table_list:
+            coord_list += target_kmer_coord_table[seqid]
+        coord_list = sorted(set(coord_list))
         if len(coord_list) > 0 and p.match(seqid):
             picked_kmer_coord_table[seqid] = coord_list
             if __name__ == "__main__":
