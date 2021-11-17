@@ -5,3 +5,4 @@ ENV="development"
 
 TABLES_DIR_PATH="/mnt/ghosts/hirata/kmer_table/table"
 GFF_DIR_PATH="/mnt/ghosts/hirata/kmer_table/data"
+UPLOAD_DIR_PATH="/mnt/ghosts/hirata/kmer_table/upload"

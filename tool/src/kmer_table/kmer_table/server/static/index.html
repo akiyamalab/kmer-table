@@ -5,29 +5,44 @@
         <script src="/js/vue.js"></script>
         <script src="/js/axios.min.js"></script>
         <script src="/js/main.js"></script>
+        <link rel="stylesheet" href="/css/index.css">
     </head>
     <body>
         <h3>K-mer table web form</h3>
         <div id="app">
+        <div class="tabMenu">
+            <span v-on:click="isSelect('1')" v-bind:class="{active: isActive === '1', inactive: isActive != '1'}">Search k-mer</span>
+            <span v-on:click="isSelect('2')" v-bind:class="{active: isActive === '2', inactive: isActive != '2'}">Create table</span>
+        </div>
+        <br/>
+        <div class="tabContents">
+        <div v-show="isActive === '1'">
             <form name="main_form" action="/lookup" method="GET" target="_blank">
                 
                 <div>
                     <strong>1. Select table</strong>
                     <br/>
-                    {{ table_info.tables_dir_path }} ..
+                    {{ table_info.tables_dir_path }}/ ..
                     <br/>
-                    <span v-for="(table, index) in table_info.table_list">
-                        <input type="radio" name="table_path" :id="table" :value="table" :checked="index==0">
-                        <label :for=table>{{ table_relative_path(table) }}</label>
-                        <br/>
-                    </span>
-                    
+                    <table>
+                        <tr v-for="(table, index) in table_info.table_list">
+                            <td>
+                                <input type="radio" name="table_path" :id="table" :value="table" :checked="index==0">
+                                <label :for=table>{{ table_relative_path(table) }}</label>
+                            </td>
+                            <td>
+                                <button type="button" v-on:click="load_table_into_memory(table, index)" :disabled="table_loaded_disabled(index)">{{load_button_text(index)}}</button>
+                            </td>
+                        </tr>
+                    </table>
+                    <br/>
                 </div>
                 <div>
                     <strong>2. Enter k-mer sequence</strong>
                     <br/>
-                    <input name="kmer" placeholder="ATGC..."/>
-                    <br>
+                    <input name="kmer" placeholder="ATGCN..."/>
+                    <br/>
+                    <br/>
                 </div>
 
                 <strong>3. Run with options</strong>
@@ -47,7 +62,7 @@
                         <br>
                         Select GFF file 
                         <br/>
-                        {{ gff_info.gff_dir_path }} ..
+                        {{ gff_info.gff_dir_path }}/ ..
                         <br/>
                         <span v-for="(gff, index) in gff_info.gff_list">
                             <input type="radio" name="gff_path" :id="gff" :value="gff" :checked="index==0">
@@ -79,6 +94,46 @@
                 <input type="hidden" name="gff_path">
                 <input type="hidden" name="feature_type">
             </form>
+        </div>
+        <div v-show="isActive === '2'">
+            <form name="create_form" action="/create" method="POST" target="_blank" enctype="multipart/form-data">
+            <div>
+                <strong>1. Enter new table directory</strong>
+                <br/>
+                {{ table_info.tables_dir_path }}/<input name="create_table_dir_relative_path" placeholder="species/new_table">
+                <br/>
+                <br/>
+            </div>
+            <div>
+                <strong>2. Input FASTA file</strong>
+                <br/>
+                FASTA FILE: <input name="create_fasta_file" type="file">
+                <br/>
+                <br/>
+            </div>
+            <div>
+                <strong>3. Enter k-mer size</strong>
+                <br/>
+                K-mer size = <input name="create_kmer_size" type="number" min='1' max='9' value='6'>
+                <br/>
+                <br/>
+            </div>
+            <div>
+                <strong>4. Run with options</strong>
+                <br/>
+                Table format: 
+                <select name="create_format">
+                    <option value="csv">csv</option>
+                    <option value="pkl">pkl</option>
+                </select>
+                <br/>
+                <br/>
+                <button type="submit">Run</button>
+            </div>
+            </form>
+            
+        </div>
+        </div>
         </div>
     </body>
 </html>

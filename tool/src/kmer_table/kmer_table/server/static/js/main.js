@@ -7,9 +7,11 @@ function main(){
         el: '#app',
         data () {
             return {
-                message: "vue loaded.",
-                table_info: "table loaded.",
-                gff_info: "gff list loaded."
+                message: "vue loading.",
+                table_info: "table loading.",
+                gff_info: "gff list loading.",
+                interval_id_table_info : undefined,
+                isActive: '1'
             }
         },
         mounted () {
@@ -22,6 +24,8 @@ function main(){
             axios
                 .get('/gff_info')
                 .then(response => {this.gff_info = response.data})
+
+            
         },
         methods : {
             table_relative_path: function(table_path) {
@@ -29,6 +33,43 @@ function main(){
             },
             gff_relative_path: function(gff_path) {
                 return gff_path.replace(this.gff_info.gff_dir_path, '').replace(/^\//, '').replace(/\/$/, '')
+            },
+            load_table_into_memory: function(table_path, index) {
+                console.log("clicked", table_path)
+                this.table_info.table_loaded_list[index] = 'loading'
+                axios
+                    .get(`/load_table_into_memory?table_path=${table_path}`)
+                    .then(response => {this.table_info = response.data})
+                this.interval_id_table_info = setInterval(()=>{
+                    axios
+                        .get('/table_info')
+                        .then(response => {this.table_info = response.data})
+                    if(!this.table_info.table_loaded_list.includes('loading')){
+                        clearInterval(this.interval_id_table_info)
+                    }
+                }, 10000)
+            },
+            table_loaded_disabled: function(index) {
+                loaded_status = this.table_info.table_loaded_list[index]
+                if(loaded_status == 'not loaded'){
+                    return false
+                }
+                return true
+            },
+            load_button_text: function(index){
+                loaded_status = this.table_info.table_loaded_list[index]
+                if(loaded_status == 'not loaded'){
+                    return "Load into memory"
+                }
+                if(loaded_status == 'loading'){
+                    return "Loading..."
+                }
+                if(loaded_status == 'loaded'){
+                    return "Loaded"
+                }
+            },
+            isSelect: function(num){
+                this.isActive = num
             }
         }
     })

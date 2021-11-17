@@ -1,0 +1,19 @@
+.tabMenu {
+    display: flex;
+}
+
+.tabMenu span {
+    width: auto;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+span.active {
+    border-bottom: solid 1px rgb(31, 31, 31);
+    
+}
+span.inactive {
+    color: gray;
+}
+span.inactive:hover {
+    color: black;
+}

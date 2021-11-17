@@ -3,6 +3,9 @@ import concurrent.futures
 import argparse
 from signal import signal, SIGPIPE, SIG_DFL
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
+import rw_table
+
 global verbose
 verbose = False
 
@@ -246,8 +249,8 @@ def output_kmer_coord_on_feature(kmer_table_dir, feature_list, kmer_size=6, kmer
     if __name__ == "__main__":
         signal(SIGPIPE, SIG_DFL) # Supress broken pipe error
     
-    target_kmer_coord_table = read_kmer_table(kmer_table_dir, kmer)
-    target_kmer_revcomp_coord_table = read_kmer_table(kmer_table_dir, reverse_complement(kmer))
+    target_kmer_coord_table = rw_table.read_kmer_table(kmer_table_dir, kmer)
+    target_kmer_revcomp_coord_table = rw_table.read_kmer_table(kmer_table_dir, reverse_complement(kmer))
     
     for feature in feature_list:
         type = feature['type']
@@ -303,8 +306,8 @@ def output_kmer_coord_on_feature_with_gap(kmer_table_dir, feature_list, kmer_siz
         signal(SIGPIPE, SIG_DFL) # Supress broken pipe error
     
     target_kmer_list = create_kmer_combination_with_gap(kmer)
-    target_kmer_coord_table_list = [read_kmer_table(kmer_table_dir, tmp_kmer) for tmp_kmer in target_kmer_list]
-    target_kmer_revcomp_coord_table_list = [read_kmer_table(kmer_table_dir, reverse_complement(tmp_kmer)) for tmp_kmer in target_kmer_list]
+    target_kmer_coord_table_list = [rw_table.read_kmer_table(kmer_table_dir, tmp_kmer) for tmp_kmer in target_kmer_list]
+    target_kmer_revcomp_coord_table_list = [rw_table.read_kmer_table(kmer_table_dir, reverse_complement(tmp_kmer)) for tmp_kmer in target_kmer_list]
     
     for feature in feature_list:
         type = feature['type']
@@ -365,8 +368,8 @@ def count_kmer(kmer_table_dir):
     
     print('Mer\tCount')
     for kmer in exist_kmer_list:
-        kmer_table = read_kmer_table(kmer_table_dir, kmer)
-        kmer_table_rev = read_kmer_table(kmer_table_dir, reverse_complement(kmer))
+        kmer_table = rw_table.read_kmer_table(kmer_table_dir, kmer)
+        kmer_table_rev = rw_table.read_kmer_table(kmer_table_dir, reverse_complement(kmer))
         cnt = 0
         for kmer_coord_list in kmer_table.values():
             cnt += len(kmer_coord_list)
@@ -387,7 +390,7 @@ def read_kmer_table_all(table_dir_path):
     
     table_dir_path_list = [table_dir_path for i in range(len(kmer_exist_list))]
     with concurrent.futures.ProcessPoolExecutor() as executer:
-            kmer_table_list = executer.map(read_kmer_table, table_dir_path_list, kmer_exist_list)
+            kmer_table_list = executer.map(rw_table.read_kmer_table, table_dir_path_list, kmer_exist_list)
     return {kmer: kt for kmer, kt in zip(kmer_exist_list, kmer_table_list)}
     #return { kmer: read_kmer_table(table_dir_path, kmer) for kmer in kmer_exist_list }
 
@@ -407,7 +410,7 @@ def output_kmer_coord_in_table(table_dir_path, target_kmer, seqid_keyword="*"):
         return output_kmer_coord_in_table_with_gap(table_dir_path, target_kmer, seqid_keyword)
     if __name__ == "__main__":
         signal(SIGPIPE, SIG_DFL) # Supress broken pipe error
-    target_kmer_coord_table = read_kmer_table(table_dir_path, target_kmer)
+    target_kmer_coord_table = rw_table.read_kmer_table(table_dir_path, target_kmer)
     escape_table = {'\\':'\\\\', '.':'\\.', '*':'.*', '+':'\\+', '?':'\\?', '{':'\\{', '}':'\\}', '(':'\\(', ')':'\\)', '[':'\\[', ']':'\\]', '^':'\\^', '$':'\\$', '|':'\\|'}
     seqid_keyword_re_str = seqid_keyword
     for befor, after in escape_table.items():
@@ -428,7 +431,7 @@ def output_kmer_coord_in_table_with_gap(table_dir_path, target_kmer, seqid_keywo
         signal(SIGPIPE, SIG_DFL) # Supress broken pipe error
     
     target_kmer_list = create_kmer_combination_with_gap(target_kmer)
-    target_kmer_coord_table_list = [read_kmer_table(table_dir_path, tmp_kmer) for tmp_kmer in target_kmer_list]
+    target_kmer_coord_table_list = [rw_table.read_kmer_table(table_dir_path, tmp_kmer) for tmp_kmer in target_kmer_list]
     escape_table = {'\\':'\\\\', '.':'\\.', '*':'.*', '+':'\\+', '?':'\\?', '{':'\\{', '}':'\\}', '(':'\\(', ')':'\\)', '[':'\\[', ']':'\\]', '^':'\\^', '$':'\\$', '|':'\\|'}
     seqid_keyword_re_str = seqid_keyword
     for befor, after in escape_table.items():
