@@ -1,5 +1,6 @@
 # ツール・コマンド
 * [kmer_table](#kmer_table)
+* [kmer_table_server](#kmer_table_server)
 
 OSS ユーティリティツール
 * [seqkit](#seqkit)
@@ -22,6 +23,15 @@ kmer_table create table/human/Homo_sapiens.GRCh38.dna.toplevel.chromosomes data/
 kmer_table lookup table/human/Homo_sapiens.GRCh38.dna.toplevel.chromosomes data/human/Homo_sapiens.GRCh38.104.gff3.gz AAAAAA
 ```
 
+## kmer_table_server
+
+* kmer_table サーバー版
+* Webインターフェースを介したテーブル作成・索引
+
+起動
+```sh
+kmer_table_server
+```
 
 ---
 

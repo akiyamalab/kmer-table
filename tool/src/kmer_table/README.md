@@ -1,3 +1,8 @@
+* [kmer-table](#kmer-table)
+* [kmer-table_server](#kmer-table-server)
+
+
+
 # kmer-table
 
 `kmer-table` : k-mer 逆引きテーブルの作成と索引
@@ -76,3 +81,47 @@
     ```
     python ./kmer_table/kmer_table.py lookup out/GRCh38.p13.genome.chromosomes data/gencode.v38.basic.annotation.gff3.gz AAAAAA
     ```
+
+
+
+# kmer-table-server
+
+`kmer-table-server` : kmer-tableサーバー版
+
+## 環境
+
+* Python 3.9+
+* Flask 2.0.2+
+
+## 使い方
+
+- サーバー起動
+    ```
+    python kmer_table_server.py
+    ```
+
+    ブラウザ上から閲覧 (デフォルト設定の場合)
+    ```
+    http://127.0.0.1:5000
+    ```
+
+- サーバー設定
+
+    サーバー起動時のホスト名、ポート及びその他設定は `config.py` を編集
+
+    `config.py` (default)
+    ```py
+    HOST="0.0.0.0"
+    PORT=5000
+    DEBUG=True
+    ENV="development"
+
+    TABLES_DIR_PATH="/workspaces/kmer_table/table"
+    GFF_DIR_PATH="/workspaces/kmer_table/data"
+    UPLOAD_DIR_PATH="/workspaces/kmer_table/upload"
+    ```
+
+    設定内容：
+    - TABLES_DIR_PATH ... 各テーブルを配置したルートディレクトリ
+    - GFF_DIR_PATH ... GFFファイルを配置したルートディレクトリ
+    - UPLOAD_DIR_PATH ... テーブル作成時のFASTAファイルアップロード用ディレクトリ
