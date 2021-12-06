@@ -440,7 +440,7 @@ def output_kmer_coord_in_table_with_gap(table_dir_path, target_kmer, seqid_keywo
     p = re.compile(seqid_keyword_re_str)
     picked_kmer_coord_table = {}
     for seqid in target_kmer_coord_table_list[0].keys():
-        coord_list = array.array('I')
+        coord_list = []
         for target_kmer_coord_table in target_kmer_coord_table_list:
             coord_list += target_kmer_coord_table[seqid]
         coord_list = sorted(set(coord_list))

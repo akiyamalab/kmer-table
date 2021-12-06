@@ -33,11 +33,67 @@ def write_kmer_table(table_dir_path, kmer, seqs_coord_list, seqid_list, format):
                 else:
                     f.write(f'{seqid},\n')
 
+def get_table_path_list(root_path):
+    p = re.compile(r'.*/[ATGC]{1,}\.(csv|pkl)\.gz$')
+    table_path_list = [dir for dir in glob.glob(f'{root_path}/**/', recursive=True) if any([ p.match(file) for file in glob.glob(dir+'/*')])]
+    return table_path_list
+
+def get_exist_kmer_file_path_list(table_dir_path):
+    p = re.compile(r'.*/([ATGC]{1,})\.(csv|pkl)\.gz$')
+    exist_kmer_list = [p.match(file)[1] for file in glob.glob(table_dir_path+'/*') if p.match(file)]
+    return sorted(set(exist_kmer_list))
+
+def is_exist_kmer_file_path(table_dir_path, kmer):
+    if len(glob.glob(f'{table_dir_path}/{kmer}.*')) > 0:
+        return True
+    else:
+        return False
+
+def get_exist_kmer_file_max_length(table_dir_path):
+    exist_kmer_list = get_exist_kmer_file_path_list(table_dir_path)
+    max_length = len(max(exist_kmer_list, key=len))
+    return max_length
+
+
+def generate_longer_kmer_table(table_dir_path, kmer):
+    sub_kmer_max_length = get_exist_kmer_file_max_length(table_dir_path)
+    offset_and_kmer_list = []
+    offset_pos = 0
+
+    while True:
+        q, mod = divmod(offset_pos+sub_kmer_max_length, len(kmer))
+        if q == 1 and mod > 0:
+            offset_pos -= mod
+            continue
+        sub_kmer = kmer[offset_pos:offset_pos+sub_kmer_max_length]
+        offset_and_kmer_list.append( (offset_pos, sub_kmer) )
+        if q == 1 and mod == 0:
+            break
+        offset_pos += sub_kmer_max_length
+    
+    target_kmer_coord_table = None
+    for offset_and_kmer in offset_and_kmer_list:
+        offset_pos, sub_kmer = offset_and_kmer
+        target_sub_kmer_coord_table = read_kmer_table(table_dir_path, sub_kmer)
+        if offset_pos == 0:
+            target_kmer_coord_table = target_sub_kmer_coord_table
+            continue
+
+        for seqid, coord_list in target_kmer_coord_table.items():
+            downstream_coord_list = set(target_sub_kmer_coord_table[seqid])
+            filterd_coord_list = [coord for coord in coord_list if coord+offset_pos in downstream_coord_list]
+            target_kmer_coord_table[seqid] = filterd_coord_list
+
+    return target_kmer_coord_table
+
 
 def read_kmer_table(table_dir_path, kmer):
     if table_dir_path in  store_kmer_table and kmer in store_kmer_table[table_dir_path]:
         return store_kmer_table[table_dir_path][kmer]
-    elif os.path.isfile(f"{table_dir_path}/{kmer}.pkl.gz"):
+    if len(kmer) > get_exist_kmer_file_max_length(table_dir_path):
+        return generate_longer_kmer_table(table_dir_path, kmer)
+    
+    if os.path.isfile(f"{table_dir_path}/{kmer}.pkl.gz"):
         with gzip.open(f"{table_dir_path}/{kmer}.pkl.gz", mode='rb') as f:
             target_kmer_coord_table = pickle.load(f)
         return target_kmer_coord_table
@@ -55,15 +111,6 @@ def read_kmer_table(table_dir_path, kmer):
         return target_kmer_coord_table
     raise Exception(f"Not found table: {table_dir_path}/{kmer}")
 
-def get_table_path_list(root_path):
-    p = re.compile(r'.*/[ATGC]{1,}\.(csv|pkl)\.gz$')
-    table_path_list = [dir for dir in glob.glob(f'{root_path}/**/', recursive=True) if any([ p.match(file) for file in glob.glob(dir+'/*')])]
-    return table_path_list
-
-def get_exist_kmer_file_path_list(table_dir_path):
-    p = re.compile(r'.*/([ATGC]{1,})\.(csv|pkl)\.gz$')
-    exist_kmer_list = [p.match(file)[1] for file in glob.glob(table_dir_path+'/*') if p.match(file)]
-    return sorted(set(exist_kmer_list))
 
 def load_kmer_table_all(table_dir_path):
     p = re.compile(r'.*/([ATGC]{1,})\.(csv|pkl)\.gz$')
