@@ -354,7 +354,7 @@ def output_kmer_coord_on_feature_with_gap(kmer_table_dir, feature_list, kmer_siz
     return feature_list
 
 
-def count_kmer(kmer_table_dir):
+def count_kmer(kmer_table_dir, strand='both', graph_flag=False):
     file_list = [os.path.basename(file_path) for file_path in glob.glob(kmer_table_dir+'/*')]
     exist_kmer_list = []
     for file in file_list:
@@ -366,17 +366,56 @@ def count_kmer(kmer_table_dir):
         print('Error: table not found.', file=sys.stderr)
         return
     
-    print('Mer\tCount')
-    for kmer in exist_kmer_list:
+    cnt_list = []
+    cnt_table = {}
+    print('Mer\tCount')    
+    kmer_table_dir_list = [kmer_table_dir for i in range(len(exist_kmer_list))]
+    strand_list = [strand for i in range(len(exist_kmer_list))]
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for kmer, cnt in zip(exist_kmer_list, executor.map(task_count_kmer, kmer_table_dir_list, exist_kmer_list, strand_list)):
+            cnt_list.append(cnt)
+            cnt_table[kmer] = cnt
+            print(f'{kmer}\t{cnt}')
+
+    if(graph_flag):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        fig = plt.figure(figsize=(len(exist_kmer_list)/ 4 / 6, 10), tight_layout=True)
+        strand_to_symbol = {'both': '+/-', 'plus': '+', 'minus': '-'}
+        fig.suptitle(f"k-mer count (strand {strand_to_symbol[strand]})")
+        #fig.supxlabel("k-mer")
+        #fig.supylabel("count")
+
+        sort_base = 'ACGT'
+        max_cnt = max(cnt_list)
+        yticks = np.asarray(np.linspace(0, max_cnt if max_cnt % 2 == 0 else max_cnt + 1, 4), dtype=int)
+        for i in range(len(sort_base)):
+            sub_kmer_list = [kmer for kmer in exist_kmer_list if kmer[0] == sort_base[i]]
+            sub_cnt_list = [cnt for kmer, cnt in cnt_table.items() if kmer[0] == sort_base[i]]
+
+            ax = fig.add_subplot(4, 1, i+1)
+            ax.set_xmargin(0)
+            ax.set_ymargin(0)
+            ax.grid(axis='y', alpha=0.3)
+            ax.bar(sub_kmer_list, sub_cnt_list, 0.5)
+            ax.set_xticks(range(len(sub_kmer_list)))
+            ax.set_xticklabels(sub_kmer_list, rotation='vertical', fontsize=10, fontname='monospace')
+            ax.set_yticks(yticks)
+        
+        fig.savefig('graph.png')
+
+def task_count_kmer(kmer_table_dir, kmer, strand):
+    cnt = 0
+    if strand in ('both', 'plus'):
         kmer_table = rw_table.read_kmer_table(kmer_table_dir, kmer)
-        kmer_table_rev = rw_table.read_kmer_table(kmer_table_dir, reverse_complement(kmer))
-        cnt = 0
         for kmer_coord_list in kmer_table.values():
             cnt += len(kmer_coord_list)
+    if strand in ('both', 'minus'):
+        kmer_table_rev = rw_table.read_kmer_table(kmer_table_dir, reverse_complement(kmer))
         for kmer_coord_list in kmer_table_rev.values():
             cnt += len(kmer_coord_list)
-        print(f'{kmer}\t{cnt}')
-
+    return cnt
 
 def get_table_path_list(root_path):
     p = re.compile(r'.*/[ATGC]{1,}\.(csv|pkl)\.gz$')
@@ -459,7 +498,7 @@ def command_lookup(args):
     output_kmer_coord_on_feature(args.table_dir, read_gff(args.gff_file), len(args.target_kmer), args.target_kmer, args.type)
 
 def command_stat(args):
-    count_kmer(args.table_dir)
+    count_kmer(args.table_dir, args.strand, args.graph)
 
 def command_pickup(args):
     output_kmer_coord_in_table(args.table_dir, args.target_kmer, args.seqid)
@@ -493,6 +532,8 @@ def main():
 
     parser_stat = subparsers.add_parser('stat')
     parser_stat.add_argument('table_dir')
+    parser_stat.add_argument('--strand', choices=['both', 'plus', 'minus'], default='both', help='default: both')
+    parser_stat.add_argument('--graph', action='store_true', help="output bar graph option. filename=graph.png")
     parser_stat.set_defaults(handler=command_stat)
 
     args = parser.parse_args()
