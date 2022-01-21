@@ -354,7 +354,7 @@ def output_kmer_coord_on_feature_with_gap(kmer_table_dir, feature_list, kmer_siz
     return feature_list
 
 
-def count_kmer(kmer_table_dir, strand='both', graph_flag=False):
+def count_kmer(kmer_table_dir, strand='both', graph_flag=False, yticks_space_size=None):
     file_list = [os.path.basename(file_path) for file_path in glob.glob(kmer_table_dir+'/*')]
     exist_kmer_list = []
     for file in file_list:
@@ -389,7 +389,13 @@ def count_kmer(kmer_table_dir, strand='both', graph_flag=False):
 
         sort_base = 'ACGT'
         max_cnt = max(cnt_list)
-        yticks = np.asarray(np.linspace(0, max_cnt if max_cnt % 2 == 0 else max_cnt + 1, 4), dtype=int)
+        if(yticks_space_size):
+            ticks_num = max_cnt // yticks_space_size + 1
+            tmp_max =  ticks_num * yticks_space_size
+            yticks = np.asarray(range(0, tmp_max+1, yticks_space_size), dtype=int)
+        else:
+            yticks = np.asarray(np.linspace(0, max_cnt if max_cnt % 2 == 0 else max_cnt + 1, 4), dtype=int)
+        
         for i in range(len(sort_base)):
             sub_kmer_list = [kmer for kmer in exist_kmer_list if kmer[0] == sort_base[i]]
             sub_cnt_list = [cnt for kmer, cnt in cnt_table.items() if kmer[0] == sort_base[i]]
@@ -402,6 +408,7 @@ def count_kmer(kmer_table_dir, strand='both', graph_flag=False):
             ax.set_xticks(range(len(sub_kmer_list)))
             ax.set_xticklabels(sub_kmer_list, rotation='vertical', fontsize=10, fontname='monospace')
             ax.set_yticks(yticks)
+            ax.ticklabel_format(style='plain',axis='y')
         
         fig.savefig('graph.png')
 
@@ -498,7 +505,7 @@ def command_lookup(args):
     output_kmer_coord_on_feature(args.table_dir, read_gff(args.gff_file), len(args.target_kmer), args.target_kmer, args.type)
 
 def command_stat(args):
-    count_kmer(args.table_dir, args.strand, args.graph)
+    count_kmer(args.table_dir, args.strand, args.graph, args.yticks_space_size)
 
 def command_pickup(args):
     output_kmer_coord_in_table(args.table_dir, args.target_kmer, args.seqid)
@@ -534,6 +541,7 @@ def main():
     parser_stat.add_argument('table_dir')
     parser_stat.add_argument('--strand', choices=['both', 'plus', 'minus'], default='both', help='default: both')
     parser_stat.add_argument('--graph', action='store_true', help="output bar graph option. filename=graph.png")
+    parser_stat.add_argument('--yticks_space_size', default=None, type=int, help="specify graph yticks space size. e.g. 1000000")
     parser_stat.set_defaults(handler=command_stat)
 
     args = parser.parse_args()
