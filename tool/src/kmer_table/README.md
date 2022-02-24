@@ -50,10 +50,13 @@
 
 - テーブル情報の取得 `stat`
     ```
-    python kmer_table.py stat table_dir
+    python kmer_table.py stat table_dir [--strand] [--graph] [--yticks_space_size]
     ```
     入力：
     - table_dir ... 参照テーブルディレクトリ
+    - --strand ... k-merをカウントする配列方向。'both'=両方向(デフォルト), 'plus'=＋鎖 or 'minus'=－鎖
+    - --graph ... 各k-merカウント数の棒グラフを出力 > graph.png
+    - --yticks_space_size ... グラフ出力時のy軸(カウント数)の一目盛サイズ指定
     
     出力：各k-merのカウント数
 

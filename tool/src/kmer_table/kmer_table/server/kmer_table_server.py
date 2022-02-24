@@ -13,14 +13,6 @@ app.config.from_pyfile('config.py')
 def index():
     return app.send_static_file('index.html')
 
-@app.route('/json')
-def json():
-    data = {
-        "name": "ryo",
-        "age": 29
-    }
-    return jsonify(data)
-
 @app.route('/table_info')
 def table_info():
     table_list = kmer_table.get_table_path_list(app.config["TABLES_DIR_PATH"])
